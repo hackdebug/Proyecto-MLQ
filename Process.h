@@ -31,6 +31,7 @@ public:
         tiempoRestante = bt;
         waitingTime = 0;
         completionTime = 0;
+        turnAroundTime = 0;
         responseTime = -1; // si está -1 es porque no se ha iniciado todavia
         yaInicio = false; // si está en true es porque ya entró a la CPU por primera vez
     }

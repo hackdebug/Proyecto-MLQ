@@ -13,53 +13,53 @@ using namespace std;
 class Scheduler {
 private:
     vector<Process> allProcesses;
-
     vector<Process> cola1; // RR(1)
     vector<Process> cola2; // RR(2)
     vector<Process> cola3; // SJF
-
     vector<Process> ProcessFinished;
 
 public:
-    void loadProcesses(string namefile);
+    void loadProcesses(string namefile)
     {
-        ifstream file(filename);
-    string line;
+        ifstream file(namefile);
+        string line;
 
-    if (file.is_open()) {
-        cout << "Error: No se pudo abrir el archivo " << filename << endl;
-        return;
+        if (!file.is_open()) {
+            cout << "Error: No se pudo abrir el archivo " << namefile << endl;
+            return;
+        }
+
+        while (getline(file, line)) {
+            if (line.empty() || line[0] == '#') continue;
+
+            stringstream ss(line);
+            string et, bt_str, at_str, q_str, pr_str;
+
+            getline(ss, et, ';');
+            getline(ss, bt_str, ';');
+            getline(ss, at_str, ';');
+            getline(ss, q_str, ';');
+            getline(ss, pr_str, ';');
+
+            float bt = stof(bt_str);
+            float at = stof(at_str);
+            int q = stoi(q_str);
+            int pr = stoi(pr_str);
+
+            Process p(et,bt,at,q,pr);
+            allProcesses.push_back(p);
+        }
+        file.close();
+        cout << "Procesos cargados exitosamente: " << allProcesses.size() << endl;
     }
 
-    while (getline(file, line)) {
-        if (line.empty() || line[0] == '#') continue; [cite: 21, 22]
-
-        stringstream ss(line);
-        string et, bt_str, at_str, q_str, pr_str;
-
-        getline(ss, et, ';'); [cite: 30]
-        getline(ss, bt_str, ';'); [cite:30]
-        getline(ss, at_str, ';'); [cite:30]
-        getline(ss, q_str, ';'); [cite:30]
-        getline(ss, pr_str, ';'); [cite:30]
-
-        float bt = stof(bt_str);
-        float at = stof(at_str);
-        int q = stoi(q_str);
-        int pr = stoi(pr_str);
-
-        process p(et,bt,at,q,pr);
-        allprocesses.push_back(p);
-    }
-    file.close();
-    cout << "Procesos cargados exitosamente: " << allProcesses.size() << endl;
-    }
-
-    void runsimulation() {
+    void runSimulation() {
         float actualtime = 0;
 
-        while (!allprocesses.empty() || !cola1.empty() || !cola2.empty() || !cola3.empty()) {
-            for (int i = 0; i < allprocesses.size(); i++) {
+        float quantumCola2Consumido = 0;
+
+        while (!allProcesses.empty() || !cola1.empty() || !cola2.empty() || !cola3.empty()) {
+            for (int i = 0; i < allProcesses.size(); i++) {
                 if (allProcesses[i].arrivalTime <= actualtime) {
                     if (allProcesses[i].queueID == 1) {
                         cola1.push_back(allProcesses[i]);
@@ -73,101 +73,140 @@ public:
                     i--;
                 }
             }
-        }
 
-        if (!cola1.empty()) {
-            Process &p = cola1[0];
+            if (!cola1.empty()) {
+                quantumCola2Consumido = 0;
 
-            if (!p.yaInicio) {
-                p.responseTime = actualtime - p.arrivalTime;
-                p.yaInicio = true;
-            }
-
-            float quantum = 1.0;
-
-            float tiempoAEjecutar = (p.tiempoRestante < quantum) ? p.tiempoRestante : quantum;
-
-            actualtime += tiempoAEjecutar;
-            p.tiempoRestante -= tiempoAEjecutar;
-
-            if (p.tiempoRestante <= 0) {
-                p.CompletionTime = actualtime;
-                p.turnAroundTime = p.completionTime - p.arrivalTime;
-                p.waitingTime = p.turnAroundTime - p.burstTime;
-
-                processend.push_back(p);
+                Process p = cola1[0];
                 cola1.erase(cola1.begin());
-            } else {
-                process procesoCopiado = p;
-                cola1.erase(cola1.begin());
-                cola1.push_back(procesoCopiado);
+
+                if (!p.yaInicio) {
+                    p.responseTime = actualtime - p.arrivalTime;
+                    p.yaInicio = true;
+                }
+
+                actualtime += 1.0;
+                p.tiempoRestante -= 1.0;
+
+                if (p.tiempoRestante <= 0) {
+                    p.completionTime = actualtime;
+                    p.turnAroundTime = p.completionTime - p.arrivalTime;
+                    p.waitingTime = p.turnAroundTime - p.burstTime;
+
+                    ProcessFinished.push_back(p);
+                } else {
+                    cola1.push_back(p);
+                }
+
             }
-
-        }
-        else if (!cola2.empty()) {
-            process &p = cola2[0];
-
-            if (!p.yaInicio) {
-                p.responseTime = actualtime - p.arrivalTime;
-                p.yaInicio = true;
-            }
-
-            float quantum = 3.0;
-
-            float tiempoAEjecutar = (p.tiemporestante < quantum) ? p.tiemporestante : quantum;
-
-            actualtime += tiempoAEjecutar;
-            p.tiempoRestante -= tiempoAEjecutar;
-
-            if (p.tiempoRestante <= 0) {
-                p.CompletionTime = actualtime;
-                p.turnAroundTime = p.completionTime - p.arrivalTime;
-                p.waitingTime = p.turnAroundTime - p.burstTime;
-
-                processend.push_back(p);
+            else if (!cola2.empty()) {
+                Process p = cola2[0];
                 cola2.erase(cola2.begin());
-            } else {
-                process procesoCopiado = p;
-                cola2.erase(cola2.begin());
-                cola2.push_back(procesoCopiado);
-            }
-        }
-        else if (!cola3.empty()) {
-            int indiceMasCorto = 0;
-            float menorBT = cola3[0].burstTime;
 
-            for (int i = 1; i < cola3.size(); i++) {
-                if (cola3[i].burstTime < menorBT) {
-                    menorBT = cola3[i].burstTime;
-                    indiceMasCorto = i;
+                if (!p.yaInicio) {
+                    p.responseTime = actualtime - p.arrivalTime;
+                    p.yaInicio = true;
+                }
+
+                actualtime += 1.0;
+                p.tiempoRestante -= 1.0;
+                quantumCola2Consumido += 1.0;
+
+                if (p.tiempoRestante <= 0) {
+                    p.completionTime = actualtime;
+                    p.turnAroundTime = p.completionTime - p.arrivalTime;
+                    p.waitingTime = p.turnAroundTime - p.burstTime;
+
+                    ProcessFinished.push_back(p);
+                    quantumCola2Consumido = 0;
+                } else {
+                    if (quantumCola2Consumido >= 3.0) {
+                        cola2.push_back(p);
+                        quantumCola2Consumido = 0;
+                    } else {
+                        cola2.insert(cola2.begin(), p);
+                    }
                 }
             }
+            else if (!cola3.empty()) {
+                quantumCola2Consumido = 0;
 
-            Process &p = cola3[indiceMasCorto];
+                int indiceMasCorto = 0;
+                float menorBT = cola3[0].burstTime;
 
-            if (!p.yaInicio) {
-                p.responseTime = actualtime - p.arrivalTime;
-                p.yaInicio = true;
+                for (int i = 1; i < cola3.size(); i++) {
+                    if (cola3[i].burstTime < menorBT) {
+                        menorBT = cola3[i].burstTime;
+                        indiceMasCorto = i;
+                    }
+                }
+
+                Process p = cola3[indiceMasCorto];
+
+                if (!p.yaInicio) {
+                    p.responseTime = actualtime - p.arrivalTime;
+                    p.yaInicio = true;
+                }
+
+                actualtime += p.burstTime;
+                p.tiempoRestante = 0;
+
+                p.completionTime = actualtime;
+                p.turnAroundTime = p.completionTime - p.arrivalTime;
+                p.waitingTime = p.turnAroundTime - p.burstTime;
+
+                ProcessFinished.push_back(p);
+                cola3.erase(cola3.begin() + indiceMasCorto);
             }
-
-            actualtime += p.burstTime;
-            p.tiempoRestante = 0;
-
-            p.completionTime = actualtime;
-            p.turnAroundTime = p.completionTime - p.arrivalTime;
-            p.waitingTime = p.turnAroundTime - p.burstTime;
-
-            processend.push_back(p);
-            cola3.erase(cola3.begin() + indicemasCorto);
-        }
-        else {
-            actualtime += 1;
+            else {
+                actualtime += 1;
+            }
         }
 
         calcularresultados();
     }
 private:
     void calcularresultados() {
-        cout << "Simulación finalizada." << endl;
+        if (ProcessFinished.empty()) {
+            cout << "No hay procesos terminados para calcular metricas" << endl;
+            return;
+        }
+
+        float sumaWT = 0, sumaCT = 0, sumaRT = 0, sumaTAT = 0;
+
+        cout << "\n# ====== RESULTADOS DE LA SIMULACION ======" << endl;
+        cout << "# etiqueta; BT; AT; Q; Pr; WT; CT; RT; TAT" << endl;
+
+        for (int i = 0; i < ProcessFinished.size(); i++) {
+            Process &p = ProcessFinished[i];
+
+            cout << p.etiqueta << ";"
+                 << p.burstTime << "; "
+                 << p.arrivalTime << "; "
+                 << p.queueID << "; "
+                 << p.priority << "; "
+                 << p.waitingTime << "; "
+                 << p.completionTime << "; "
+                 << p.responseTime << "; "
+                 << p.turnAroundTime << endl;
+
+            sumaWT += p.waitingTime;
+            sumaCT += p.completionTime;
+            sumaRT += p.responseTime;
+            sumaTAT += p.turnAroundTime;
+        }
+
+        int totalProcesses = ProcessFinished.size();
+        float promWT = sumaWT / totalProcesses;
+        float promCT = sumaCT / totalProcesses;
+        float promRT = sumaRT / totalProcesses;
+        float promTAT = sumaTAT / totalProcesses;
+
+        cout << "# WT=" << promWT
+             << " CT=" << promCT
+             << " RT=" << promRT
+             << " TAT=" << promTAT << ";" << endl;
+        cout << "===========================================\n" << endl;
     }
 };
+#endif

@@ -76,13 +76,89 @@ public:
         }
 
         if (!cola1.empty()) {
-            actualtime += 1;
+            Process &p = cola1[0];
+
+            if (!p.yaInicio) {
+                p.responseTime = actualtime - p.arrivalTime;
+                p.yaInicio = true;
+            }
+
+            float quantum = 1.0;
+
+            float tiempoAEjecutar = (p.tiempoRestante < quantum) ? p.tiempoRestante : quantum;
+
+            actualtime += tiempoAEjecutar;
+            p.tiempoRestante -= tiempoAEjecutar;
+
+            if (p.tiempoRestante <= 0) {
+                p.CompletionTime = actualtime;
+                p.turnAroundTime = p.completionTime - p.arrivalTime;
+                p.waitingTime = p.turnAroundTime - p.burstTime;
+
+                processend.push_back(p);
+                cola1.erase(cola1.begin());
+            } else {
+                process procesoCopiado = p;
+                cola1.erase(cola1.begin());
+                cola1.push_back(procesoCopiado);
+            }
+
         }
         else if (!cola2.empty()) {
-            actualtime += 1;
+            process &p = cola2[0];
+
+            if (!p.yaInicio) {
+                p.responseTime = actualtime - p.arrivalTime;
+                p.yaInicio = true;
+            }
+
+            float quantum = 3.0;
+
+            float tiempoAEjecutar = (p.tiemporestante < quantum) ? p.tiemporestante : quantum;
+
+            actualtime += tiempoAEjecutar;
+            p.tiempoRestante -= tiempoAEjecutar;
+
+            if (p.tiempoRestante <= 0) {
+                p.CompletionTime = actualtime;
+                p.turnAroundTime = p.completionTime - p.arrivalTime;
+                p.waitingTime = p.turnAroundTime - p.burstTime;
+
+                processend.push_back(p);
+                cola2.erase(cola2.begin());
+            } else {
+                process procesoCopiado = p;
+                cola2.erase(cola2.begin());
+                cola2.push_back(procesoCopiado);
+            }
         }
         else if (!cola3.empty()) {
-            actualtime += 1;
+            int indiceMasCorto = 0;
+            float menorBT = cola3[0].burstTime;
+
+            for (int i = 1; i < cola3.size(); i++) {
+                if (cola3[i].burstTime < menorBT) {
+                    menorBT = cola3[i].burstTime;
+                    indiceMasCorto = i;
+                }
+            }
+
+            Process &p = cola3[indiceMasCorto];
+
+            if (!p.yaInicio) {
+                p.responseTime = actualtime - p.arrivalTime;
+                p.yaInicio = true;
+            }
+
+            actualtime += p.burstTime;
+            p.tiempoRestante = 0;
+
+            p.completionTime = actualtime;
+            p.turnAroundTime = p.completionTime - p.arrivalTime;
+            p.waitingTime = p.turnAroundTime - p.burstTime;
+
+            processend.push_back(p);
+            cola3.erase(cola3.begin() + indicemasCorto);
         }
         else {
             actualtime += 1;
